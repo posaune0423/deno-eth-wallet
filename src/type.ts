@@ -4,11 +4,11 @@
  * Ethereum トランザクションを表すクラス。
  */
 export interface Transaction {
-  nonce: bigint;
-  gasPrice: bigint;
-  gasLimit: bigint;
-  to: string;
-  value: bigint;
-  data: string;
-  chainId: number;
+  nonce: bigint
+  gasPrice: bigint
+  gasLimit: bigint
+  to: string
+  value: bigint
+  data: string
+  chainId: number
 }
