@@ -14,6 +14,7 @@
     "singleQuote": true,
     "lineWidth": 120,
     "useTabs": false,
-    "indentWidth": 2
+    "indentWidth": 2,
+    "proseWrap": "preserve"
   }
 }
