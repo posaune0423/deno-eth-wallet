@@ -1,4 +1,4 @@
 {
-    "deno.enable": true,
-    "biome.enabled": false
+  "deno.enable": true,
+  "biome.enabled": false
 }
