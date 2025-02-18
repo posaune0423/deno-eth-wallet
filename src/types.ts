@@ -4,7 +4,7 @@
  * ※ EIP-155 以降では、chainId は必須となっています。
  */
 export interface Transaction {
-  nonce: bigint
+  nonce: number
   from: `0x${string}`
   to: `0x${string}`
   value: bigint

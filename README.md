@@ -110,3 +110,7 @@ deno task send -t <TO_ADDRESS> -v <AMOUNT> -r <RPC_URL>
 ```bash
 deno task contract-call -c <CONTRACT_ADDRESS> -a <CONTRACT_ABI_PATH> -f <FUNCTION_NAME> -p '[<PARAMETERS>]' -v 0 -r <RPC_URL>
 ```
+
+## 参考
+
+- https://support.metamask.io/develop/building-with-infura/javascript-typescript/how-to-send-eip1559-transactions-axios/

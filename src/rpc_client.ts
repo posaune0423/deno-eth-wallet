@@ -41,12 +41,12 @@ export class RpcClient {
   }
 
   /** 指定されたアドレスの nonce を取得する。 */
-  async getNonce(address: string): Promise<bigint> {
+  async getNonce(address: string): Promise<number> {
     const result = await this.request('eth_getTransactionCount', [
       address,
       'pending',
     ])
-    return BigInt(result as string)
+    return Number(result as string)
   }
 
   /** 現在の gasPrice を取得する。 */

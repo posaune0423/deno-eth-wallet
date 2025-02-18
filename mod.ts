@@ -18,7 +18,7 @@ import {
   baseSepolia,
 } from 'https://esm.sh/viem@2.23.2/chains'
 import { RpcClient } from './src/rpc_client.ts'
-
+import { Transaction } from './src/types.ts'
 const spinner = Spinner.getInstance()
 const chains = [sepolia, holesky, baseSepolia]
 
@@ -83,8 +83,9 @@ await new Command()
         wallet.setRpc(opts.rpc)
         const rpc = new RpcClient(opts.rpc)
         const chainId = await rpc.getChainId()
-
         const nonce = await rpc.getNonce(wallet.address)
+
+        // トランザクションのガス価格とガスリミットを取得する。
         const gasPrice = await rpc.getGasPrice()
         const gasLimit = await rpc.estimateGas({
           from: wallet.address,
@@ -92,7 +93,8 @@ await new Command()
           value: toHex(parseEther(opts.value)),
         })
 
-        const tx = {
+        // トランザクションを作成する。
+        const tx: Transaction = {
           nonce,
           from: wallet.address,
           to: opts.to as `0x${string}`,
@@ -104,10 +106,13 @@ await new Command()
           gasLimit,
         }
 
-        try {
-          spinner.start('Sending transaction...')
+        // トランザクションにwalletの秘密鍵で署名する。
+        const signedTx = await wallet.signTransaction(tx)
 
-          const txHash = await wallet.sendTransaction(tx)
+        try {
+          // トランザクションを送信する。
+          spinner.start('Sending transaction...')
+          const txHash = await rpc.sendRawTransaction(signedTx)
           spinner.succeed(`Transaction Hash: ${txHash}`)
         } catch (err) {
           spinner.fail('Error sending transaction')

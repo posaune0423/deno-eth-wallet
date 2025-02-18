@@ -86,17 +86,20 @@ export class Wallet {
     this.rpc = rpc
   }
 
-  async sendTransaction(tx: Transaction): Promise<`0x${string}`> {
+  async signTransaction(tx: Transaction): Promise<`0x${string}`> {
     const wallet = createWalletClient({
       account: privateKeyToAccount(this.privateKey),
       transport: http(this.rpc),
     })
 
-    return await wallet.sendTransaction({
+    return await wallet.signTransaction({
       chain: CHAINS.find((chain) => chain.id === tx.chainId),
+      nonce: tx.nonce,
       to: tx.to,
       value: tx.value,
       data: tx.data,
+      gasPrice: tx.maxFeePerGas,
+      gas: tx.gasLimit,
     })
   }
 }
