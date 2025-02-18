@@ -16,5 +16,8 @@
     "useTabs": false,
     "indentWidth": 2,
     "proseWrap": "preserve"
+  },
+  "lint": {
+    "rules": {}
   }
 }

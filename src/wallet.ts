@@ -1,24 +1,27 @@
+// src/wallet.ts
 // Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import * as path from 'https://deno.land/std@0.177.0/path/mod.ts'
-import {
-  generatePrivateKey,
-  privateKeyToAccount,
-} from 'https://esm.sh/viem/accounts'
-
-const WALLET_FILE = path.join(Deno.cwd(), 'wallet.json')
+import * as bip39 from 'jsr:@scure/bip39@1.5.4'
+import { wordlist as english } from 'jsr:@scure/bip39/wordlists/english'
+import { HDKey } from 'jsr:@scure/bip32@1.6.2'
+import { Buffer } from 'https://deno.land/std@0.177.0/node/buffer.ts'
+import { keccak256 } from 'https://esm.sh/js-sha3@0.8.0?target=deno'
+import type { Address, Transaction } from './types.ts'
+import { signMessage } from './signature.ts'
 
 /**
  * Ethereum ウォレットを表すクラス。
  *
- * このモジュールは、@scure/bip39 を用いてミニモニックの生成・管理を行い、
- * @scure/bip32 を用いて HD キーの派生を実現します。
+ * このクラスは、ミニモニック生成、HD キー派生、トランザクションおよびメッセージの署名など、
+ * ウォレットとして必要な機能を提供します。
  */
 export class Wallet {
+  /** ミニモニックフレーズ */
+  readonly mnemonic: string
   /** 秘密鍵 (hex 文字列) */
-  readonly privateKey: `0x${string}`
-  /** 公開鍵から導出された Ethereum アドレス */
-  readonly address: `0x${string}`
+  readonly privateKey: string
+  /** Ethereum アドレス */
+  readonly address: Address
 
   /**
    * 新しい Wallet インスタンスを生成する。
@@ -26,7 +29,8 @@ export class Wallet {
    * @param privateKey - 秘密鍵 (hex 文字列)
    * @param address - Ethereum アドレス
    */
-  constructor(privateKey: `0x${string}`, address: `0x${string}`) {
+  constructor(mnemonic: string, privateKey: string, address: Address) {
+    this.mnemonic = mnemonic
     this.privateKey = privateKey
     this.address = address
   }
@@ -34,46 +38,50 @@ export class Wallet {
   /**
    * 新しい Ethereum ウォレットを作成する。
    *
-   * @scure/bip39 の英語単語リストを使用してミニモニックを生成し、
+   * @scure/bip39 の英語単語リストを用いてミニモニックを生成し、
    * シードを派生して @scure/bip32 による HD キー派生を行います。
    * 標準派生パス "m/44'/60'/0'/0/0" を使用します。
    *
    * @returns 新しい Wallet インスタンスを返す Promise
    */
-  static create(): Wallet {
-    // 英語の単語リストを用いて新しいミニモニックを生成する。
-    const privateKey = generatePrivateKey()
-    // ミニモニックからシード (Uint8Array) を派生する（パスワードは使用しない）。
-    const account = privateKeyToAccount(privateKey)
-
-    return new Wallet(privateKey, account.address)
-  }
-
-  /** Saves the wallet to a file. */
-  async saveWalletToFile(wallet: Wallet): Promise<void> {
-    const data = JSON.stringify(
-      {
-        privateKey: wallet.privateKey,
-        address: wallet.address,
-      },
-      null,
-      2
-    )
-    await Deno.writeTextFile(WALLET_FILE, data)
-    console.log('Wallet saved to', WALLET_FILE)
-  }
-
-  /** Loads the wallet from a file. */
-  static async loadWalletFromFile(): Promise<Wallet> {
-    try {
-      const data = await Deno.readTextFile(WALLET_FILE)
-      const obj = JSON.parse(data)
-      return new Wallet(obj.privateKey, obj.address)
-    } catch {
-      console.error(
-        "Wallet file not found. Create a wallet first using the 'create' command"
-      )
-      Deno.exit(1)
+  static async create(): Promise<Wallet> {
+    const mnemonic: string = bip39.generateMnemonic(english)
+    const seed: Uint8Array = await bip39.mnemonicToSeed(mnemonic, '')
+    const hdkey = HDKey.fromMasterSeed(seed)
+    const derived = hdkey.derive("m/44'/60'/0'/0/0")
+    if (!derived.privateKey) {
+      throw new Error('Cannot derive private key from the seed')
     }
+    const privateKeyHex: string = '0x' + Buffer.from(derived.privateKey).toString('hex')
+    if (!derived.publicKey) {
+      throw new Error('Cannot derive public key from the seed')
+    }
+    const uncompressedPubKey: Uint8Array = derived.publicKey[0] === 0x04
+      ? derived.publicKey.slice(1)
+      : derived.publicKey
+    const hash: string = keccak256(uncompressedPubKey)
+    const address: Address = `0x${hash.slice(-40)}` as Address
+    return new Wallet(mnemonic, privateKeyHex, address)
+  }
+
+  /**
+   * 与えられたトランザクションデータに対して、このウォレットの秘密鍵で署名する。
+   *
+   * @param tx - 署名対象の Transaction オブジェクト。
+   * @returns 署名済みトランザクションの hex 文字列。
+   */
+  async sign(tx: Transaction): Promise<string> {
+    const { signTransaction } = await import('./signature.ts')
+    return signTransaction(tx, this.privateKey, tx.chainId)
+  }
+
+  /**
+   * メッセージに対して EIP-191 形式で署名する。
+   *
+   * @param message - 署名するメッセージ (文字列または Uint8Array)。
+   * @returns 署名済みメッセージの hex 文字列。
+   */
+  signMessage(message: string | Uint8Array): Promise<string> {
+    return signMessage(message, this.privateKey)
   }
 }

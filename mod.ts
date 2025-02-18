@@ -1,24 +1,48 @@
-// Copyright 2018-2024 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
 import { Command } from 'https://deno.land/x/cliffy@v0.25.7/command/mod.ts'
+import * as path from 'https://deno.land/std@0.177.0/path/mod.ts'
 import { Wallet } from './src/wallet.ts'
-import Spinner from 'https://deno.land/x/cli_spinners@v0.0.2/mod.ts'
-import { privateKeyToAccount } from 'https://esm.sh/viem@2.23.2/accounts'
-import {
-  http,
-  extractChain,
-  createPublicClient,
-  createWalletClient,
-  parseEther,
-} from 'https://esm.sh/viem@2.23.2'
-import {
-  sepolia,
-  holesky,
-  baseSepolia,
-} from 'https://esm.sh/viem@2.23.2/chains'
+import { RpcClient } from './src/rpc_client.ts'
+import { spinner } from './src/utils.ts'
+import { encodeFunctionCall } from './src/abi_encoder.ts'
+import { Address, Transaction } from './src/types.ts'
+import { parseEther } from 'https://esm.sh/viem'
 
-const spinner = Spinner.getInstance()
-const chains = [sepolia, holesky, baseSepolia]
+const WALLET_FILE = path.join(Deno.cwd(), 'wallet.json')
+
+/**
+ * ウォレット情報をファイルに保存する関数。
+ */
+async function saveWalletToFile(wallet: Wallet): Promise<void> {
+  const data = JSON.stringify(
+    {
+      mnemonic: wallet.mnemonic,
+      privateKey: wallet.privateKey,
+      address: wallet.address,
+    },
+    null,
+    2,
+  )
+  await Deno.writeTextFile(WALLET_FILE, data)
+  console.log('Wallet saved to', WALLET_FILE)
+}
+
+/**
+ * ウォレット情報をファイルから読み込む関数。
+ */
+async function loadWalletFromFile(): Promise<Wallet> {
+  try {
+    const data = await Deno.readTextFile(WALLET_FILE)
+    const obj = JSON.parse(data)
+    return new Wallet(obj.mnemonic, obj.privateKey, obj.address)
+  } catch {
+    console.error(
+      "Wallet file not found. Create a wallet first using the 'create' command",
+    )
+    Deno.exit(1)
+  }
+}
 
 await new Command()
   .name('wallet')
@@ -28,107 +52,113 @@ await new Command()
   .command(
     'create',
     new Command()
-      .description('Create a new wallet (private key, address)')
+      .description(
+        '新しいウォレットを作成する (ミニモニック, 秘密鍵, アドレス)',
+      )
       .action(async () => {
-        const wallet = Wallet.create()
+        const wallet = await Wallet.create()
         console.log('Address:', wallet.address)
+        console.log('Mnemonic:', wallet.mnemonic)
         console.log('Private Key:', wallet.privateKey)
-        await wallet.saveWalletToFile(wallet)
-      })
+        await saveWalletToFile(wallet)
+      }),
   )
   // show コマンド
   .command(
     'show',
-    new Command()
-      .description('Show wallet information')
-      .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'https://ethereum-sepolia-rpc.publicnode.com',
-      })
-      .action(async (opts) => {
-        const wallet = await Wallet.loadWalletFromFile()
-
-        const client = createPublicClient({
-          transport: http(opts.rpc),
-        })
-
-        const balance = await client.getBalance({
-          address: wallet.address,
-        })
-
-        console.log('🪪 Address:', wallet.address)
-        console.log('🪙 Balance:', Number(balance) / 10 ** 18)
-      })
+    new Command().description('ウォレット情報を表示する').action(async () => {
+      const wallet = await loadWalletFromFile()
+      console.log('Address:', wallet.address)
+      console.log('Mnemonic:', wallet.mnemonic)
+      console.log('Private Key:', wallet.privateKey)
+    }),
   )
   // send コマンド (ETH 送金)
   .command(
     'send',
     new Command()
-      .description('Send ETH transaction')
-      .option('-t, --to <address:string>', 'Recipient address')
-      .option('-v, --value <value:string>', 'Amount of ETH to send (in ether)')
+      .description('ETH トランザクションを送信する')
+      .option('-t, --to <address:string>', '送信先アドレス')
+      .option('-v, --value <value:string>', '送金する ETH の量 (ether 単位)')
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'https://ethereum-sepolia-rpc.publicnode.com',
+        default: 'http://localhost:8545',
       })
       .action(async (opts) => {
         if (!opts.to || !opts.value) {
-          console.error(
-            'Missing required options: --to and --value are required'
-          )
+          console.error('To address and value are required')
           Deno.exit(1)
         }
 
-        const wallet = await Wallet.loadWalletFromFile()
-        const client = createWalletClient({
-          account: privateKeyToAccount(wallet.privateKey),
-          transport: http(opts.rpc),
-        })
+        const wallet = await loadWalletFromFile()
+        const rpc = new RpcClient(opts.rpc)
 
-        const chainId = await client.getChainId()
+        const nonce = await rpc.getNonce(wallet.address)
+        const gasPrice = await rpc.getGasPrice()
+        const chainId = await rpc.getChainId()
+        const value = parseEther(opts.value)
 
-        const chain = extractChain({
-          chains,
-          id: chainId as 84532 | 11155111 | 17000,
-        })
+        const txForEstimate = {
+          from: wallet.address,
+          to: opts.to,
+          data: '0x',
+          value: '0x0',
+        }
 
+        // ガス計算
+        let gasLimit: bigint
+        try {
+          gasLimit = await rpc.estimateGas(txForEstimate)
+        } catch {
+          console.error('Error estimating gas, using default 21000')
+          gasLimit = 21000n
+        }
+
+        const tx: Transaction = {
+          nonce,
+          gasPrice,
+          gasLimit,
+          to: opts.to as Address,
+          value,
+          data: '0x',
+          chainId,
+        }
+
+        // ウォレットのインスタンスメソッドを使用して署名
+        const rawTx = await wallet.sign(tx)
+        console.log('Raw Transaction:', rawTx)
         try {
           spinner.start('Sending transaction...')
-          const txHash = await client.sendTransaction({
-            to: opts.to as `0x${string}`,
-            value: parseEther(opts.value),
-            chain,
-          })
-          spinner.succeed(`Transaction Hash: ${txHash}`)
+          const txHash = await rpc.sendRawTransaction(rawTx)
+          spinner.succeed('Transaction sent successfully')
+          console.log('Transaction Hash:', txHash)
         } catch (err) {
-          spinner.fail('Error sending transaction')
+          spinner.fail('Transaction failed')
           console.error('Error sending transaction:', err)
         }
-      })
+      }),
   )
-  // contract-call コマンド
+  // contract-call コマンド (スマートコントラクト呼び出し)
   .command(
     'contract-call',
     new Command()
-      .description('Call a smart contract function')
-      .option('-c, --contract <address:string>', 'Contract address')
-      .option('-a, --abi <file:string>', 'ABI JSON file')
-      .option('-f, --function <name:string>', 'Function name')
-      .option('-p, --params <json:string>', 'Function parameters as JSON array')
-      .option(
-        '-v, --value <value:string>',
-        'Amount of ETH to send (default 0)',
-        { default: '0' }
-      )
+      .description('スマートコントラクト関数を呼び出す')
+      .option('-c, --contract <address:string>', 'コントラクトアドレス')
+      .option('-a, --abi <file:string>', 'ABI JSON ファイル')
+      .option('-f, --function <name:string>', '呼び出す関数名')
+      .option('-p, --params <json:string>', '関数パラメータ (JSON 配列形式)')
+      .option('-v, --value <value:string>', '送金する ETH の量 (default 0)', {
+        default: '0',
+      })
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'https://ethereum-sepolia-rpc.publicnode.com',
+        default: 'http://localhost:8545',
       })
       .action(async (opts) => {
-        if (!opts.contract || !opts.abi || !opts.function) {
-          console.error(
-            'Missing required options: --contract, --abi, and --function are required'
-          )
+        if (!opts.abi || !opts.function) {
+          console.error('ABI file and function name are required')
           Deno.exit(1)
         }
-
+        const wallet = await loadWalletFromFile()
+        const rpc = new RpcClient(opts.rpc)
         try {
           const abiText = await Deno.readTextFile(opts.abi)
           const abi = JSON.parse(abiText)
@@ -139,51 +169,54 @@ await new Command()
               throw new Error('Params must be a JSON array')
             }
           }
+          const data = await encodeFunctionCall(abi, opts.function, params)
+          const nonce = await rpc.getNonce(wallet.address)
+          const gasPrice = await rpc.getGasPrice()
+          const chainId = await rpc.getChainId()
+          const txForEstimate = {
+            from: wallet.address,
+            to: opts.contract,
+            data: data,
+            value: '0x0',
+          }
 
+          // ガス計算
+          let gasLimit: bigint
           try {
-            spinner.start('Calling contract function...')
-            if (opts.value) {
-              const wallet = await Wallet.loadWalletFromFile()
-              const client = createWalletClient({
-                account: privateKeyToAccount(wallet.privateKey),
-                transport: http(opts.rpc),
-              })
-              const chainId = await client.getChainId()
-              const chain = extractChain({
-                chains,
-                id: chainId as 84532 | 11155111 | 17000,
-              })
-              client.writeContract({
-                address: opts.contract as `0x${string}`,
-                abi,
-                functionName: opts.function,
-                args: params,
-                chain,
-              })
-            } else {
-              const client = createPublicClient({
-                transport: http(opts.rpc),
-              })
-              client.readContract({
-                address: opts.contract as `0x${string}`,
-                abi,
-                functionName: opts.function,
-                args: params,
-              })
-            }
-            spinner.succeed('Contract function called successfully')
+            gasLimit = await rpc.estimateGas(txForEstimate)
+          } catch {
+            console.error('Error estimating gas, using default 21000')
+            gasLimit = 21000n
+          }
+
+          const value = parseEther(opts.value)
+          const tx: Transaction = {
+            nonce,
+            gasPrice,
+            gasLimit,
+            to: opts.contract as Address,
+            value,
+            data,
+            chainId,
+          }
+          const rawTx = await wallet.sign(tx)
+          console.log('Raw Transaction:', rawTx)
+          try {
+            spinner.start('Sending transaction...')
+            const txHash = await rpc.sendRawTransaction(rawTx)
+            spinner.succeed('Transaction sent successfully')
+            console.log('Transaction Hash:', txHash)
           } catch (err) {
-            spinner.fail('Error sending contract call transaction')
+            spinner.fail('Transaction failed')
             console.error('Error sending contract call transaction:', err)
           }
         } catch (err) {
-          spinner.fail('Error reading ABI file or encoding function call')
           console.error(
             'Error reading ABI file or encoding function call:',
-            err
+            err,
           )
           Deno.exit(1)
         }
-      })
+      }),
   )
   .parse(Deno.args)
