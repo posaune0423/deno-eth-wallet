@@ -59,12 +59,8 @@
 ```bash
 deno-eth-wallet
 ├── src/
-│   ├── abi_encoder.ts
-│   ├── rpc_client.ts
-│   ├── tx.ts
-│   ├── utils.ts
 │   └── wallet.ts
-└── main.ts
+└── mod.ts
 ```
 
 ---
@@ -81,7 +77,7 @@ deno-eth-wallet
 リポジトリをクローンしてローカル環境にセットアップします。
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:posaune0423/deno-eth-wallet.git
 cd deno-eth-wallet
 ```
 

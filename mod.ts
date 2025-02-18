@@ -42,7 +42,7 @@ await new Command()
     new Command()
       .description('Show wallet information')
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'http://localhost:8545',
+        default: 'https://ethereum-sepolia-rpc.publicnode.com',
       })
       .action(async (opts) => {
         const wallet = await Wallet.loadWalletFromFile()
@@ -67,7 +67,7 @@ await new Command()
       .option('-t, --to <address:string>', 'Recipient address')
       .option('-v, --value <value:string>', 'Amount of ETH to send (in ether)')
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'http://localhost:8545',
+        default: 'https://ethereum-sepolia-rpc.publicnode.com',
       })
       .action(async (opts) => {
         if (!opts.to || !opts.value) {
@@ -119,7 +119,7 @@ await new Command()
         { default: '0' }
       )
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'http://localhost:8545',
+        default: 'https://ethereum-sepolia-rpc.publicnode.com',
       })
       .action(async (opts) => {
         if (!opts.contract || !opts.abi || !opts.function) {
