@@ -104,7 +104,7 @@ await new Command()
         const signedTx = await wallet.signTransaction(tx)
 
         try {
-          // トランザクションを送信する。
+          // RPC provider経由でトランザクションを送信する。
           spinner.start('Sending transaction...')
           const txHash = await rpc.sendRawTransaction(signedTx)
           spinner.succeed(`Transaction Hash: ${txHash}`)
