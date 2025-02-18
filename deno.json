@@ -1,9 +1,9 @@
 {
   "tasks": {
-    "create": "deno run -A main.ts create",
-    "show": "deno run -A main.ts show",
-    "send": "deno run -A main.ts send",
-    "call": "deno run -A main.ts call"
+    "create": "deno run -A mod.ts create",
+    "show": "deno run -A mod.ts show",
+    "send": "deno run -A mod.ts send",
+    "call": "deno run -A mod.ts call"
   },
   "imports": {
     "@scure/bip39": "jsr:@scure/bip39@^1.5.4",
