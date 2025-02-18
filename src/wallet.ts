@@ -1,10 +1,13 @@
 // Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import * as path from 'https://deno.land/std@0.177.0/path/mod.ts'
+import * as path from '@std/path'
 import {
   generatePrivateKey,
   privateKeyToAccount,
 } from 'https://esm.sh/viem/accounts'
+import { createWalletClient, http } from 'https://esm.sh/viem'
+import { Transaction } from './types.ts'
+import { CHAINS } from './const.ts'
 
 const WALLET_FILE = path.join(Deno.cwd(), 'wallet.json')
 
@@ -19,6 +22,8 @@ export class Wallet {
   readonly privateKey: `0x${string}`
   /** 公開鍵から導出された Ethereum アドレス */
   readonly address: `0x${string}`
+  /** RPC url */
+  rpc?: string
 
   /**
    * 新しい Wallet インスタンスを生成する。
@@ -75,5 +80,23 @@ export class Wallet {
       )
       Deno.exit(1)
     }
+  }
+
+  setRpc(rpc: string) {
+    this.rpc = rpc
+  }
+
+  async sendTransaction(tx: Transaction): Promise<`0x${string}`> {
+    const wallet = createWalletClient({
+      account: privateKeyToAccount(this.privateKey),
+      transport: http(this.rpc),
+    })
+
+    return await wallet.sendTransaction({
+      chain: CHAINS.find((chain) => chain.id === tx.chainId),
+      to: tx.to,
+      value: tx.value,
+      data: tx.data,
+    })
   }
 }

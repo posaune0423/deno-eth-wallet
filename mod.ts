@@ -10,12 +10,14 @@ import {
   createPublicClient,
   createWalletClient,
   parseEther,
+  toHex,
 } from 'https://esm.sh/viem@2.23.2'
 import {
   sepolia,
   holesky,
   baseSepolia,
 } from 'https://esm.sh/viem@2.23.2/chains'
+import { RpcClient } from './src/rpc_client.ts'
 
 const spinner = Spinner.getInstance()
 const chains = [sepolia, holesky, baseSepolia]
@@ -78,25 +80,34 @@ await new Command()
         }
 
         const wallet = await Wallet.loadWalletFromFile()
-        const client = createWalletClient({
-          account: privateKeyToAccount(wallet.privateKey),
-          transport: http(opts.rpc),
+        wallet.setRpc(opts.rpc)
+        const rpc = new RpcClient(opts.rpc)
+        const chainId = await rpc.getChainId()
+
+        const nonce = await rpc.getNonce(wallet.address)
+        const gasPrice = await rpc.getGasPrice()
+        const gasLimit = await rpc.estimateGas({
+          from: wallet.address,
+          to: opts.to as `0x${string}`,
+          value: toHex(parseEther(opts.value)),
         })
 
-        const chainId = await client.getChainId()
-
-        const chain = extractChain({
-          chains,
-          id: chainId as 84532 | 11155111 | 17000,
-        })
+        const tx = {
+          nonce,
+          from: wallet.address,
+          to: opts.to as `0x${string}`,
+          value: parseEther(opts.value),
+          chainId,
+          data: '0x' as `0x${string}`,
+          maxFeePerGas: gasPrice,
+          maxPriorityFeePerGas: gasPrice,
+          gasLimit,
+        }
 
         try {
           spinner.start('Sending transaction...')
-          const txHash = await client.sendTransaction({
-            to: opts.to as `0x${string}`,
-            value: parseEther(opts.value),
-            chain,
-          })
+
+          const txHash = await wallet.sendTransaction(tx)
           spinner.succeed(`Transaction Hash: ${txHash}`)
         } catch (err) {
           spinner.fail('Error sending transaction')

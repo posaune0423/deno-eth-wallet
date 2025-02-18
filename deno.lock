@@ -15,6 +15,7 @@
     "jsr:@std/crypto@*": "1.0.4",
     "jsr:@std/internal@^1.0.5": "1.0.5",
     "jsr:@std/path@*": "1.0.8",
+    "jsr:@std/path@^1.0.8": "1.0.8",
     "npm:@types/node@*": "22.5.4"
   },
   "jsr": {
@@ -114,7 +115,8 @@
     "https://esm.sh/node-gyp-build@^4.3.0?target=denonext": "https://esm.sh/node-gyp-build@4.8.4?target=denonext",
     "https://esm.sh/utf-8-validate@%3E=5.0.2?target=denonext": "https://esm.sh/utf-8-validate@6.0.5?target=denonext",
     "https://esm.sh/viem": "https://esm.sh/viem@2.23.2",
-    "https://esm.sh/viem/accounts": "https://esm.sh/viem@2.23.2/accounts"
+    "https://esm.sh/viem/accounts": "https://esm.sh/viem@2.23.2/accounts",
+    "https://esm.sh/viem/chains": "https://esm.sh/viem@2.23.2/chains"
   },
   "remote": {
     "https://deno.land/std@0.170.0/fmt/colors.ts": "03ad95e543d2808bc43c17a3dd29d25b43d0f16287fe562a0be89bf632454a12",
@@ -881,7 +883,8 @@
   "workspace": {
     "dependencies": [
       "jsr:@scure/bip39@^1.5.4",
-      "jsr:@std/assert@1"
+      "jsr:@std/assert@1",
+      "jsr:@std/path@^1.0.8"
     ]
   }
 }
