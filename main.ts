@@ -97,8 +97,7 @@ await new Command()
             value: parseEther(opts.value),
             chain,
           })
-          spinner.succeed('Transaction sent successfully')
-          console.log('Transaction Hash:', txHash)
+          spinner.succeed(`Transaction Hash: ${txHash}`)
         } catch (err) {
           spinner.fail('Error sending transaction')
           console.error('Error sending transaction:', err)
