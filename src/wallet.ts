@@ -98,8 +98,8 @@ export class Wallet {
       to: tx.to,
       value: tx.value,
       data: tx.data,
-      gasPrice: tx.maxFeePerGas,
-      gas: tx.gasLimit,
+      gasPrice: tx.gasPrice,
+      gas: tx.gas,
     })
   }
 }

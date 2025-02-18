@@ -9,8 +9,7 @@ export interface Transaction {
   to: `0x${string}`
   value: bigint
   data: `0x${string}`
-  maxFeePerGas: bigint
-  maxPriorityFeePerGas: bigint
-  gasLimit: bigint
+  gas: bigint
+  gasPrice: bigint
   chainId: number
 }

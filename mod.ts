@@ -87,7 +87,7 @@ await new Command()
 
         // トランザクションのガス価格とガスリミットを取得する。
         const gasPrice = await rpc.getGasPrice()
-        const gasLimit = await rpc.estimateGas({
+        const estimatedGas = await rpc.estimateGas({
           from: wallet.address,
           to: opts.to as `0x${string}`,
           value: toHex(parseEther(opts.value)),
@@ -101,9 +101,8 @@ await new Command()
           value: parseEther(opts.value),
           chainId,
           data: '0x' as `0x${string}`,
-          maxFeePerGas: gasPrice,
-          maxPriorityFeePerGas: gasPrice,
-          gasLimit,
+          gas: estimatedGas,
+          gasPrice,
         }
 
         // トランザクションにwalletの秘密鍵で署名する。

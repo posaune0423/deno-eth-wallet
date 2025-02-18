@@ -59,6 +59,9 @@
 ```bash
 deno-eth-wallet
 ├── src/
+│   ├── const.ts
+│   ├── rpc_client.ts
+│   ├── types.ts
 │   └── wallet.ts
 └── mod.ts
 ```
