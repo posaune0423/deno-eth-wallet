@@ -11,5 +11,8 @@ export interface Transaction {
   data: `0x${string}`
   gas: bigint
   gasPrice: bigint
+  // gasLimit: bigint
+  // maxPriorityFeePerGas: bigint
+  // maxFeePerGas: bigint
   chainId: number
 }

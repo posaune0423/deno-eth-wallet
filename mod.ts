@@ -12,15 +12,11 @@ import {
   parseEther,
   toHex,
 } from 'https://esm.sh/viem@2.23.2'
-import {
-  sepolia,
-  holesky,
-  baseSepolia,
-} from 'https://esm.sh/viem@2.23.2/chains'
+import { holesky } from 'https://esm.sh/viem@2.23.2/chains'
 import { RpcClient } from './src/rpc_client.ts'
 import { Transaction } from './src/types.ts'
+import { CHAINS } from './src/const.ts'
 const spinner = Spinner.getInstance()
-const chains = [sepolia, holesky, baseSepolia]
 
 await new Command()
   .name('wallet')
@@ -44,18 +40,13 @@ await new Command()
     new Command()
       .description('Show wallet information')
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'https://ethereum-sepolia-rpc.publicnode.com',
+        default: holesky.rpcUrls.default.http[0],
       })
       .action(async (opts) => {
         const wallet = await Wallet.loadWalletFromFile()
 
-        const client = createPublicClient({
-          transport: http(opts.rpc),
-        })
-
-        const balance = await client.getBalance({
-          address: wallet.address,
-        })
+        const rpc = new RpcClient(opts.rpc)
+        const balance = await rpc.getBalance(wallet.address)
 
         console.log('🪪 Address:', wallet.address)
         console.log('🪙 Balance:', Number(balance) / 10 ** 18)
@@ -69,7 +60,7 @@ await new Command()
       .option('-t, --to <address:string>', 'Recipient address')
       .option('-v, --value <value:string>', 'Amount of ETH to send (in ether)')
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'https://ethereum-sepolia-rpc.publicnode.com',
+        default: holesky.rpcUrls.default.http[0],
       })
       .action(async (opts) => {
         if (!opts.to || !opts.value) {
@@ -86,12 +77,16 @@ await new Command()
         const nonce = await rpc.getNonce(wallet.address)
 
         // トランザクションのガス価格とガスリミットを取得する。
+        spinner.start('Estimating gas...')
         const gasPrice = await rpc.getGasPrice()
         const estimatedGas = await rpc.estimateGas({
           from: wallet.address,
           to: opts.to as `0x${string}`,
           value: toHex(parseEther(opts.value)),
         })
+        spinner.succeed('Gas estimated \n')
+        console.log('estimatedGas', estimatedGas)
+        console.log('gasPrice', gasPrice)
 
         // トランザクションを作成する。
         const tx: Transaction = {
@@ -100,8 +95,8 @@ await new Command()
           to: opts.to as `0x${string}`,
           value: parseEther(opts.value),
           chainId,
-          data: '0x' as `0x${string}`,
-          gas: estimatedGas,
+          data: '0x0',
+          gas: estimatedGas > 22000n ? estimatedGas : 22000n,
           gasPrice,
         }
 
@@ -134,7 +129,7 @@ await new Command()
         { default: '0' }
       )
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'https://ethereum-sepolia-rpc.publicnode.com',
+        default: holesky.rpcUrls.default.http[0],
       })
       .action(async (opts) => {
         if (!opts.contract || !opts.abi || !opts.function) {
@@ -165,7 +160,7 @@ await new Command()
               })
               const chainId = await client.getChainId()
               const chain = extractChain({
-                chains,
+                chains: CHAINS,
                 id: chainId as 84532 | 11155111 | 17000,
               })
               client.writeContract({

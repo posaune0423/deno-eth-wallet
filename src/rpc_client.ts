@@ -49,6 +49,12 @@ export class RpcClient {
     return Number(result as string)
   }
 
+  /** 指定されたアドレスの残高を取得する。 */
+  async getBalance(address: string): Promise<bigint> {
+    const result = await this.request('eth_getBalance', [address, 'latest'])
+    return BigInt(result as string)
+  }
+
   /** 現在の gasPrice を取得する。 */
   async getGasPrice(): Promise<bigint> {
     const result = await this.request('eth_gasPrice', [])

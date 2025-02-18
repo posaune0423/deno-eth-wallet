@@ -100,6 +100,9 @@ export class Wallet {
       data: tx.data,
       gasPrice: tx.gasPrice,
       gas: tx.gas,
+      // gasLimit: tx.gasLimit,
+      // maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
+      // maxFeePerGas: tx.maxFeePerGas,
     })
   }
 }
