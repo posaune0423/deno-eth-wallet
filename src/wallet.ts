@@ -4,10 +4,10 @@
 import * as bip39 from 'jsr:@scure/bip39@1.5.4'
 import { wordlist as english } from 'jsr:@scure/bip39/wordlists/english'
 import { HDKey } from 'jsr:@scure/bip32@1.6.2'
-import { Buffer } from 'https://deno.land/std@0.177.0/node/buffer.ts'
-import { keccak256 } from 'https://esm.sh/js-sha3@0.8.0?target=deno'
+import { Buffer } from 'node:buffer'
+import jsSha3 from 'https://esm.sh/js-sha3@0.8.0?target=deno'
 import type { Address, Transaction } from './types.ts'
-import { signMessage } from './signature.ts'
+import { signMessage, signTransaction } from './signature.ts'
 
 /**
  * Ethereum ウォレットを表すクラス。
@@ -59,7 +59,7 @@ export class Wallet {
     const uncompressedPubKey: Uint8Array = derived.publicKey[0] === 0x04
       ? derived.publicKey.slice(1)
       : derived.publicKey
-    const hash: string = keccak256(uncompressedPubKey)
+    const hash: string = jsSha3.keccak256(uncompressedPubKey)
     const address: Address = `0x${hash.slice(-40)}` as Address
     return new Wallet(mnemonic, privateKeyHex, address)
   }
@@ -71,8 +71,7 @@ export class Wallet {
    * @returns 署名済みトランザクションの hex 文字列。
    */
   async sign(tx: Transaction): Promise<string> {
-    const { signTransaction } = await import('./signature.ts')
-    return signTransaction(tx, this.privateKey, tx.chainId)
+    return await signTransaction(tx, this.privateKey)
   }
 
   /**
@@ -81,7 +80,7 @@ export class Wallet {
    * @param message - 署名するメッセージ (文字列または Uint8Array)。
    * @returns 署名済みメッセージの hex 文字列。
    */
-  signMessage(message: string | Uint8Array): Promise<string> {
-    return signMessage(message, this.privateKey)
+  async signMessage(message: string | Uint8Array): Promise<string> {
+    return await signMessage(message, this.privateKey)
   }
 }

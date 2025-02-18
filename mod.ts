@@ -1,15 +1,15 @@
 // Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
 import { Command } from 'https://deno.land/x/cliffy@v0.25.7/command/mod.ts'
-import * as path from 'https://deno.land/std@0.177.0/path/mod.ts'
+import { join } from '@std/path'
 import { Wallet } from './src/wallet.ts'
 import { RpcClient } from './src/rpc_client.ts'
 import { spinner } from './src/utils.ts'
 import { encodeFunctionCall } from './src/abi_encoder.ts'
 import { Address, Transaction } from './src/types.ts'
-import { parseEther } from 'https://esm.sh/viem'
+import { isAddress, parseEther } from 'https://esm.sh/viem?target=deno'
 
-const WALLET_FILE = path.join(Deno.cwd(), 'wallet.json')
+const WALLET_FILE = join(Deno.cwd(), 'wallet.json')
 
 /**
  * ウォレット情報をファイルに保存する関数。
@@ -81,7 +81,7 @@ await new Command()
       .option('-t, --to <address:string>', '送信先アドレス')
       .option('-v, --value <value:string>', '送金する ETH の量 (ether 単位)')
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'http://localhost:8545',
+        default: 'https://ethereum-holesky-rpc.publicnode.com',
       })
       .action(async (opts) => {
         if (!opts.to || !opts.value) {
@@ -98,10 +98,10 @@ await new Command()
         const value = parseEther(opts.value)
 
         const txForEstimate = {
-          from: wallet.address,
+          // from: wallet.address,
           to: opts.to,
-          data: '0x',
-          value: '0x0',
+          value,
+          // data: '0x',
         }
 
         // ガス計算
@@ -114,12 +114,15 @@ await new Command()
         }
 
         const tx: Transaction = {
+          type: 2,
           nonce,
-          gasPrice,
-          gasLimit,
+          // from: wallet.address,
           to: opts.to as Address,
+          maxFeePerGas: gasPrice,
+          maxPriorityFeePerGas: gasPrice,
           value,
-          data: '0x',
+          gasLimit,
+          // data: '0x',
           chainId,
         }
 
@@ -150,7 +153,7 @@ await new Command()
         default: '0',
       })
       .option('-r, --rpc <rpcUrl:string>', 'RPC URL', {
-        default: 'http://localhost:8545',
+        default: 'https://ethereum-holesky-rpc.publicnode.com',
       })
       .action(async (opts) => {
         if (!opts.abi || !opts.function) {
@@ -173,10 +176,11 @@ await new Command()
           const nonce = await rpc.getNonce(wallet.address)
           const gasPrice = await rpc.getGasPrice()
           const chainId = await rpc.getChainId()
+
           const txForEstimate = {
             from: wallet.address,
             to: opts.contract,
-            data: data,
+            data,
             value: '0x0',
           }
 
@@ -191,12 +195,15 @@ await new Command()
 
           const value = parseEther(opts.value)
           const tx: Transaction = {
+            type: 2,
             nonce,
-            gasPrice,
-            gasLimit,
+            // from: wallet.address,
             to: opts.contract as Address,
+            maxFeePerGas: gasPrice,
+            maxPriorityFeePerGas: gasPrice,
+            gasLimit,
             value,
-            data,
+            // data,
             chainId,
           }
           const rawTx = await wallet.sign(tx)

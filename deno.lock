@@ -15,6 +15,7 @@
     "jsr:@std/crypto@*": "1.0.4",
     "jsr:@std/internal@^1.0.5": "1.0.5",
     "jsr:@std/path@*": "1.0.8",
+    "jsr:@std/path@^1.0.8": "1.0.8",
     "npm:@types/node@*": "22.5.4"
   },
   "jsr": {
@@ -1208,7 +1209,8 @@
   "workspace": {
     "dependencies": [
       "jsr:@scure/bip39@^1.5.4",
-      "jsr:@std/assert@1"
+      "jsr:@std/assert@1",
+      "jsr:@std/path@^1.0.8"
     ]
   }
 }

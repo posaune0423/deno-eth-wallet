@@ -1,6 +1,7 @@
 // Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 import { Buffer } from 'node:buffer'
 import Spinner from 'https://deno.land/x/cli_spinners@v0.0.2/mod.ts'
+import { Hex } from './types.ts'
 
 export const spinner = Spinner.getInstance()
 
@@ -41,7 +42,7 @@ export function toBuffer(input: unknown): Uint8Array {
 }
 
 /** "0x" プレフィックス付きの 16 進文字列を Uint8Array に変換する。 */
-export function hexToBuffer(hex: string): Uint8Array {
-  if (hex.startsWith('0x')) hex = hex.slice(2)
+export function hexToBuffer(hex: stirng): Uint8Array {
+  if (typeof hex === 'string' && hex.startsWith('0x')) hex = hex.slice(2)
   return new Uint8Array(Buffer.from(hex, 'hex'))
 }

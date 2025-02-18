@@ -1,5 +1,7 @@
 // Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
+import { Transaction } from './types.ts'
+
 /**
  * JSON‑RPC 通信用クラス。
  */
@@ -68,6 +70,12 @@ export class RpcClient {
   /** 生トランザクションを送信する。 */
   async sendRawTransaction(rawTx: string): Promise<string> {
     const result = await this.request('eth_sendRawTransaction', [rawTx])
+    return result as string
+  }
+
+  /** トランザクションを送信する。 */
+  async sendTransaction(tx: Transaction): Promise<string> {
+    const result = await this.request('eth_sendTransaction', [tx])
     return result as string
   }
 }
