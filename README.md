@@ -29,12 +29,12 @@
 
 - **ウォレット生成**
 
-  - BIP39 に基づくミニモニックフレーズを生成し、HD キー派生（標準パス `m/44'/60'/0'/0/0`）により秘密鍵と Ethereum
+  - [BIP39](https://iancoleman.io/bip39/) に基づくミニモニックフレーズを生成し、HD キー派生（標準パス `m/44'/60'/0'/0/0`）により秘密鍵と Ethereum
     アドレスを生成します。
 
 - **トランザクション署名**
 
-  - EIP‑155 に対応したトランザクションの生成と署名が可能です。
+  - [EIP‑155](https://eips.ethereum.org/EIPS/eip-155) に対応したトランザクションの生成と署名が可能です。
 
 - **スマートコントラクト呼び出し**
 
@@ -117,3 +117,6 @@ deno task contract-call -c <CONTRACT_ADDRESS> -a <CONTRACT_ABI_PATH> -f <FUNCTIO
 ## 参考
 
 - https://support.metamask.io/develop/building-with-infura/javascript-typescript/how-to-send-eip1559-transactions-axios/
+- [【完全保存版】BIP32 をしっかりと理解しよう！ ](https://note.com/standenglish/n/nfd15c746435f)
+- [【完全保存版】BIP39 をしっかりと理解しよう！ ](https://note.com/standenglish/n/n8aea890f6286)
+- [[EIP155] Ethereum ネットワークでリプレイ攻撃を防ぐ仕組みを理解しよう！](https://qiita.com/cardene/items/2526432899353e4a0225)
