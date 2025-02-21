@@ -28,7 +28,7 @@ await new Command()
     new Command()
       .description('Create a new wallet (private key, address)')
       .action(async () => {
-        const wallet = Wallet.create()
+        const wallet = await Wallet.create()
         console.log('Address:', wallet.address)
         console.log('Private Key:', wallet.privateKey)
         await wallet.saveWalletToFile(wallet)

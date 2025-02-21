@@ -1,13 +1,13 @@
 // Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
 import * as path from '@std/path'
-import {
-  generatePrivateKey,
-  privateKeyToAccount,
-} from 'https://esm.sh/viem/accounts'
-import { createWalletClient, http } from 'https://esm.sh/viem'
+import { createWalletClient, http, toHex } from 'https://esm.sh/viem'
+import { privateKeyToAccount } from 'https://esm.sh/viem/accounts'
 import { Transaction } from './types.ts'
 import { CHAINS } from './const.ts'
+import { HDKey } from 'jsr:/@scure/bip32'
+import { generateMnemonic, mnemonicToSeed } from 'jsr:/@scure/bip39'
+import { wordlist as english } from 'jsr:/@scure/bip39/wordlists/english'
 
 const WALLET_FILE = path.join(Deno.cwd(), 'wallet.json')
 
@@ -18,6 +18,8 @@ const WALLET_FILE = path.join(Deno.cwd(), 'wallet.json')
  * @scure/bip32 を用いて HD キーの派生を実現します。
  */
 export class Wallet {
+  /** ミニモニックフレーズ */
+  readonly mnemonic: string
   /** 秘密鍵 (hex 文字列) */
   readonly privateKey: `0x${string}`
   /** 公開鍵から導出された Ethereum アドレス */
@@ -31,7 +33,12 @@ export class Wallet {
    * @param privateKey - 秘密鍵 (hex 文字列)
    * @param address - Ethereum アドレス
    */
-  constructor(privateKey: `0x${string}`, address: `0x${string}`) {
+  constructor(
+    mnemonic: string,
+    privateKey: `0x${string}`,
+    address: `0x${string}`
+  ) {
+    this.mnemonic = mnemonic
     this.privateKey = privateKey
     this.address = address
   }
@@ -45,19 +52,34 @@ export class Wallet {
    *
    * @returns 新しい Wallet インスタンスを返す Promise
    */
-  static create(): Wallet {
+  static async create(): Promise<Wallet> {
     // 英語の単語リストを用いて新しいミニモニックを生成する。
-    const privateKey = generatePrivateKey()
-    // ミニモニックからシード (Uint8Array) を派生する（パスワードは使用しない）。
+    const mnemonic = generateMnemonic(english)
+
+    // ミニモニックからシード (Uint8Array) を生成する（パスワードは使用しない）。
+    const seed = await mnemonicToSeed(mnemonic, '')
+
+    // シードから HD キーを生成する。
+    const hdKey = HDKey.fromMasterSeed(seed)
+
+    // 標準派生パス "m/44'/60'/0'/0/0" を使用して秘密鍵を生成する。
+    const privKeyBytes = hdKey.derive("m/44'/60'/0'/0/0").privateKey
+
+    if (!privKeyBytes) {
+      throw new Error('Failed to derive private key')
+    }
+
+    const privateKey = toHex(privKeyBytes)
     const account = privateKeyToAccount(privateKey)
 
-    return new Wallet(privateKey, account.address)
+    return new Wallet(mnemonic, privateKey, account.address)
   }
 
   /** Saves the wallet to a file. */
   async saveWalletToFile(wallet: Wallet): Promise<void> {
     const data = JSON.stringify(
       {
+        mnemonic: wallet.mnemonic,
         privateKey: wallet.privateKey,
         address: wallet.address,
       },
@@ -73,7 +95,7 @@ export class Wallet {
     try {
       const data = await Deno.readTextFile(WALLET_FILE)
       const obj = JSON.parse(data)
-      return new Wallet(obj.privateKey, obj.address)
+      return new Wallet(obj.mnemonic, obj.privateKey, obj.address)
     } catch {
       console.error(
         "Wallet file not found. Create a wallet first using the 'create' command"
@@ -87,13 +109,13 @@ export class Wallet {
   }
 
   async signTransaction(tx: Transaction): Promise<`0x${string}`> {
-    const wallet = createWalletClient({
+    const viem = createWalletClient({
       account: privateKeyToAccount(this.privateKey),
       transport: http(this.rpc),
+      chain: CHAINS.find((chain) => chain.id === tx.chainId),
     })
 
-    return await wallet.signTransaction({
-      chain: CHAINS.find((chain) => chain.id === tx.chainId),
+    const txInfo = {
       nonce: tx.nonce,
       to: tx.to,
       value: tx.value,
@@ -103,6 +125,10 @@ export class Wallet {
       // gasLimit: tx.gasLimit,
       // maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
       // maxFeePerGas: tx.maxFeePerGas,
+    }
+
+    return await viem.signTransaction({
+      ...txInfo,
     })
   }
 }
