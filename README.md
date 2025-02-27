@@ -68,14 +68,25 @@ deno-eth-wallet
 
 ---
 
-## 前提条件
+## セットアップ
 
-- [Deno](https://deno.land/) v2.x 以降がインストールされていること
-- 必要に応じて通信（例: `--allow-net`）やファイルアクセス（例: `--allow-read`）の権限が付与されていること
+Vscodeなどのエディタのインストール
+
+[Deno](https://deno.land/) のインストール
+
+```shell
+
+# Macの場合
+curl -fsSL https://deno.land/install.sh | sh
+
+# Windowsの場合
+irm https://deno.land/install.ps1 | iex
+```
+
 
 ---
 
-## インストール
+## Clone
 
 リポジトリをクローンしてローカル環境にセットアップします。
 
